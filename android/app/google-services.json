@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "43385817675",
+    "project_id": "trip-expense-tracker-463510",
+    "storage_bucket": "trip-expense-tracker-463510.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:43385817675:android:b5e0ece77d2c38f5b45bce",
+        "android_client_info": {
+          "package_name": "com.aft"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "43385817675-7bnla2np6fh19jt9ifvuinh9qkp0i3kl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aft",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "43385817675-s56k667e7l7jh1eja20kbhuod1deb59a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQwesTniuoSXdllxtc-TkTG4tDha9sGGA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "43385817675-s56k667e7l7jh1eja20kbhuod1deb59a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
