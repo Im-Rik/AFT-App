@@ -1,23 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { useNetInfo } from '@react-native-community/netinfo';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-const BANNER_HEIGHT = 44;
+export const BANNER_HEIGHT = 44;
 
-const OfflineNotice = () => {
-  const netInfo = useNetInfo();
-  
+const OfflineNotice = ({ isOffline }) => {
   // Use useRef for animation values to persist them across re-renders
   const animValues = useRef({
     height: new Animated.Value(0),
     opacity: new Animated.Value(0),
   }).current;
 
-  const isOffline = netInfo.isInternetReachable === false;
-
   useEffect(() => {
-    // Animate the banner based on the offline status
+    // Animate the banner based on the offline status prop
     Animated.parallel([
       Animated.timing(animValues.height, {
         toValue: isOffline ? BANNER_HEIGHT : 0,

@@ -5,12 +5,14 @@ import { useAuth } from '../context/AuthContext';
 import { getDashboardData, getUsers } from '../api';
 import { getQueue, processQueue, getSyncHistory } from '../api/offlineQueue';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNetInfo } from '@react-native-community/netinfo';
 
-import MainTabNavigator from '../navigation/MainTabNavigator';
 import AddExpenseModal from '../components/AddExpenseModal';
 import SettleUpModal from '../components/SettleUpModal';
 import SyncStatusModal from '../components/SyncStatusModal';
-import OfflineNotice from '../components/OfflineNotice';
+import OfflineNotice, { BANNER_HEIGHT } from '../components/OfflineNotice';
+import MainTabNavigator from '../navigation/MainTabNavigator';
+
 
 const CACHED_DATA_KEY = 'cached_dashboard_data';
 
@@ -29,6 +31,8 @@ const DashboardScreen = () => {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { user } = useAuth();
+  const netInfo = useNetInfo();
+  const isOffline = netInfo.isInternetReachable === false;
 
   const refreshQueueAndHistoryState = async () => {
     const [q, h] = await Promise.all([getQueue(), getSyncHistory()]);
@@ -89,13 +93,13 @@ const DashboardScreen = () => {
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
-    // --- [MODIFICATION] Increment the key to signal a refresh ---
-    setRefreshKey(prevKey => prevKey + 1); 
+    setRefreshKey(prevKey => prevKey + 1);
     try { Vibration.vibrate(50); } catch (e) { console.log("Vibration failed", e); }
     loadData(true);
   }, [loadData]);
 
   const handleSave = () => {
+    // The modal now closes itself, so we just need to refresh the data
     onRefresh();
   };
 
@@ -136,7 +140,7 @@ const DashboardScreen = () => {
         />
       )}
 
-      <OfflineNotice/>
+      <OfflineNotice isOffline={isOffline} />
 
       <SyncStatusModal
         visible={isSyncModalOpen}
@@ -145,7 +149,11 @@ const DashboardScreen = () => {
         history={syncHistory}
       />
 
-      <View style={styles.fabContainer}>
+      <View style={[
+        styles.fabContainer,
+        // Lift the button when the offline notice is visible
+        { bottom: isOffline ? 80 + BANNER_HEIGHT : 80 }
+      ]}>
         {user?.role === 'admin' && (
           <TouchableOpacity
             onPress={() => setIsAddExpenseModalOpen(true)}
@@ -160,82 +168,79 @@ const DashboardScreen = () => {
         )}
       </View>
 
-      {users.length > 0 && (
-        <>
-          <SettleUpModal
-            visible={isSettleUpModalOpen}
-            onClose={() => setIsSettleUpModalOpen(false)}
-            users={users}
-            onSave={handleSave}
-          />
-          <AddExpenseModal
-            visible={isAddExpenseModalOpen}
-            onClose={() => setIsAddExpenseModalOpen(false)}
-            users={users}
-            onSave={handleSave}
-          />
-        </>
-      )}
+      <SettleUpModal
+        visible={isSettleUpModalOpen}
+        onClose={() => setIsSettleUpModalOpen(false)}
+        users={users}
+        onSave={handleSave}
+      />
+      
+      <AddExpenseModal
+          visible={isAddExpenseModalOpen}
+          onClose={() => setIsAddExpenseModalOpen(false)}
+          users={users}
+          onSave={handleSave}
+      />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#94a3b8',
-    fontSize: 16,
-  },
-  errorText: {
-    color: '#f87171',
-    fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#0d9488',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  fabContainer: {
-    position: 'absolute',
-    bottom: 80,
-    right: 10,
-  },
-  addFab: {
-    backgroundColor: '#0d9488',
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  addFabDisabled: {
-    backgroundColor: '#1f2937',
-    opacity: 0.5,
-  }
+    container: {
+      flex: 1,
+      backgroundColor: '#0f172a',
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#0f172a',
+      padding: 20,
+    },
+    loadingText: {
+      marginTop: 10,
+      color: '#94a3b8',
+      fontSize: 16,
+    },
+    errorText: {
+      color: '#f87171',
+      fontSize: 18,
+      textAlign: 'center',
+      marginBottom: 20,
+    },
+    retryButton: {
+      backgroundColor: '#0d9488',
+      paddingVertical: 12,
+      paddingHorizontal: 30,
+      borderRadius: 8,
+    },
+    retryButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: 'bold',
+    },
+    fabContainer: {
+      position: 'absolute',
+      // The `bottom` value is now applied dynamically above
+      right: 10,
+    },
+    addFab: {
+      backgroundColor: '#0d9488',
+      width: 64,
+      height: 64,
+      borderRadius: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+    },
+    addFabDisabled: {
+      backgroundColor: '#1f2937',
+      opacity: 0.5,
+    }
 });
 
 export default DashboardScreen;

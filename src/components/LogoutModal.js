@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, SafeAreaView } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, SafeAreaView, Animated } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import UserAvatar from './UserAvatar';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -7,18 +7,72 @@ import { format } from 'date-fns';
 
 const LogoutModal = ({ visible, onClose, onOpenSyncStatus, queue, lastUpdated }) => {
   const { user, logout } = useAuth();
+  const contentAnim = useRef(new Animated.Value(0)).current;
+
+  // This function is called after the modal is fully presented.
+  // It animates the content card into view.
+  const handleShow = () => {
+    Animated.timing(contentAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // This function animates the content out, then calls the parent's
+  // onClose prop to hide the modal.
+  const handleClose = () => {
+    Animated.timing(contentAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      onClose();
+    });
+  };
+
+  // This handler ensures the fade-out animation completes 
+  // before the logout action is performed for a smooth transition.
+  const handleLogout = () => {
+    Animated.timing(contentAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      logout();
+      onClose();
+    });
+  };
 
   if (!user) return null;
+
+  // These styles will be applied to the content card for the animation.
+  const animatedContentStyle = {
+    opacity: contentAnim,
+    transform: [
+      {
+        scale: contentAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.95, 1],
+        }),
+      },
+    ],
+  };
 
   return (
     <Modal
       animationType="fade"
       transparent={true}
       visible={visible}
-      onRequestClose={onClose}
+      onShow={handleShow}
+      onRequestClose={handleClose}
+      statusBarTranslucent={true}
     >
-      <SafeAreaView style={styles.modalBackdrop} onTouchEnd={onClose}>
-        <View style={styles.modalContent}>
+      <SafeAreaView style={styles.modalBackdrop} onTouchEnd={handleClose}>
+        <Animated.View
+          style={[styles.modalContent, animatedContentStyle]}
+          onStartShouldSetResponder={() => true} // Captures taps on the card itself
+        >
           {/* User Info */}
           <View style={styles.header}>
             <UserAvatar name={user.name} size="lg" />
@@ -40,11 +94,11 @@ const LogoutModal = ({ visible, onClose, onOpenSyncStatus, queue, lastUpdated })
           </TouchableOpacity>
           
           {/* Logout Button */}
-          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Icon name="log-out-outline" size={22} color="#f87171" />
             <Text style={styles.logoutButtonText}>Logout</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </SafeAreaView>
     </Modal>
   );

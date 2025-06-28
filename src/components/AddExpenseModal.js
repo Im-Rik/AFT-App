@@ -1,5 +1,20 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Pressable,
+  Easing,
+} from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { addExpense } from '../api';
 import { addToQueue } from '../api/offlineQueue';
@@ -12,6 +27,7 @@ const categories = {
     Hotel: [], Activities: [], Shopping: [], Other: [],
 };
 const locations = ['Sealdah', 'NJP', 'Lava', 'Kolakham', 'Tinchuley', 'Siliguri', 'Other'];
+const { height: screenHeight } = Dimensions.get('window');
 
 const getFoodSubCategoryByTime = () => {
     const hour = new Date().getHours();
@@ -26,7 +42,6 @@ const getFoodSubCategoryByTime = () => {
 // --- Main Component ---
 const AddExpenseModal = ({ visible, onClose, users, onSave }) => {
   const { user } = useAuth();
-
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Food');
@@ -40,8 +55,40 @@ const AddExpenseModal = ({ visible, onClose, users, onSave }) => {
   const [splitWith, setSplitWith] = useState([]);
   const [exactSplits, setExactSplits] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  
+  const slideAnimation = useRef(new Animated.Value(screenHeight)).current;
 
-  // --- [NEW] Calculate the total from exact splits ---
+   useEffect(() => {
+    // This timeout ensures the modal is fully mounted before the animation starts,
+    // preventing the "sudden" appearance.
+    const timer = setTimeout(() => {
+      if (visible) {
+        Animated.timing(slideAnimation, {
+          toValue: 0,
+          duration: 350,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }).start();
+      }
+    }, 10); // A very short delay is all that's needed
+
+    // Cleanup the timer if the component unmounts
+    return () => clearTimeout(timer);
+  }, [visible, slideAnimation]);
+
+  const handleClose = () => {
+    Animated.timing(slideAnimation, {
+      toValue: screenHeight,
+      duration: 300,
+      easing: Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      onClose();
+    });
+  };
+  
+  const isLoading = !users || users.length === 0;
+
   const exactSplitTotal = useMemo(() => {
     return Object.values(exactSplits).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
   }, [exactSplits]);
@@ -51,7 +98,6 @@ const AddExpenseModal = ({ visible, onClose, users, onSave }) => {
     return subCategory === 'Other' || (currentSubCategories.length === 0 && category !== 'Hotel');
   }, [subCategory, currentSubCategories, category]);
 
-  // Effect to reset the form when the modal is opened
   useEffect(() => {
     if (visible && user && users.length > 0) {
         setCategory('Food'); setAmount(''); setDescription('');
@@ -63,7 +109,6 @@ const AddExpenseModal = ({ visible, onClose, users, onSave }) => {
     }
   }, [visible, user, users]);
 
-  // Other effects for sub-category and description logic...
   useEffect(() => {
     let newSubCategory;
     if (category === 'Food') newSubCategory = getFoodSubCategoryByTime();
@@ -81,8 +126,9 @@ const AddExpenseModal = ({ visible, onClose, users, onSave }) => {
     setExactSplits(prev => ({ ...prev, [userId]: value }));
   };
 
+  // --- BUG FIX: Correctly add the userId to the array ---
   const toggleEqualSplitUser = (userId) => {
-    setSplitWith(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, u.id]);
+    setSplitWith(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
   };
 
   const handleSubmit = async () => {
@@ -91,44 +137,38 @@ const AddExpenseModal = ({ visible, onClose, users, onSave }) => {
     try {
         const finalDescription = description || subCategory || category;
         const finalLocation = location === 'Other' ? otherLocation : location;
-        
-        // --- [MODIFICATION] Determine the final amount based on split type ---
         const finalAmount = splitType === 'exact' ? exactSplitTotal : parseFloat(amount);
         if (!finalAmount || finalAmount <= 0) {
             throw new Error("Expense amount must be greater than zero.");
         }
-
-        const locationData = category === 'Transport' 
+        const locationData = category === 'Transport'
             ? { location: '', locationFrom, locationTo }
             : { location: finalLocation, locationFrom: '', locationTo: '' };
-
         const commonPayload = {
             description: finalDescription, amount: finalAmount, category,
             subCategory, ...locationData, paidByUserId,
         };
-
         if (splitType === 'equal') {
             if (splitWith.length === 0) throw new Error("Please select at least one person to split with equally.");
             payload = { ...commonPayload, splitType, splits: splitWith };
-        } else { // 'exact'
+        } else {
             const splits = Object.entries(exactSplits)
               .map(([userId, val]) => ({ userId, amount: parseFloat(val) || 0 }))
               .filter(s => s.amount > 0);
             if (splits.length === 0) throw new Error("Please enter at least one person's share for an exact split.");
-            // The check against the total is no longer needed as the total IS the sum of the splits.
             payload = { ...commonPayload, splitType, splits };
         }
         await addExpense(payload);
         Alert.alert('Success', 'Expense added successfully!');
         onSave();
-        onClose();
+        handleClose();
     } catch (error) {
         const isLikelyOffline = error.message.includes('Network request failed');
         if (isLikelyOffline && payload) {
             await addToQueue('/api/expenses', payload);
             Alert.alert('Saved Locally', 'Your expense has been saved locally and will be uploaded when you are back online.');
             onSave();
-            onClose();
+            handleClose();
         } else {
             Alert.alert('Save Error', error.message);
         }
@@ -140,100 +180,98 @@ const AddExpenseModal = ({ visible, onClose, users, onSave }) => {
   const isAmountDisabled = splitType === 'exact';
 
   return (
-    <Modal animationType="slide" transparent={false} visible={visible} onRequestClose={onClose}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-            <Text style={styles.headerTitle}>Add New Expense</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Icon name="close-circle" size={30} color="#94a3b8" />
-            </TouchableOpacity>
-        </View>
-        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-          <View style={styles.section}>
-            <Text style={styles.label}>Category</Text>
-            <View style={styles.chipContainer}>{Object.keys(categories).map(c => (<TouchableOpacity key={c} onPress={() => setCategory(c)} style={[styles.chip, category === c && styles.chipSelected]}><Text style={[styles.chipText, category === c && styles.chipTextSelected]}>{c}</Text></TouchableOpacity>))}</View>
-          </View>
-
-          {currentSubCategories.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.label}>Sub-Category</Text>
-              <View style={styles.chipContainer}>{currentSubCategories.map(sc => (<TouchableOpacity key={sc} onPress={() => setSubCategory(sc)} style={[styles.chip, subCategory === sc && styles.chipSelected]}><Text style={[styles.chipText, subCategory === sc && styles.chipTextSelected]}>{sc}</Text></TouchableOpacity>))}</View>
+    <Modal
+      animationType="none"
+      transparent={true}
+      visible={visible}
+      onRequestClose={handleClose}
+    >
+      <View style={styles.modalOverlay}>
+        <Pressable style={styles.backdrop} onPress={handleClose} />
+        <Animated.View style={[styles.modalContainer, { transform: [{ translateY: slideAnimation }] }]}>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Add New Expense</Text>
+                <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                    <Icon name="close-circle" size={30} color="#94a3b8" />
+                </TouchableOpacity>
             </View>
-          )}
-
-          {showDescriptionInput && (
-            <View style={styles.section}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput style={styles.input} placeholder="so what is it ...." value={description} onChangeText={setDescription} placeholderTextColor="#94a3b8" />
-            </View>
-          )}
-
-          <View style={styles.section}>
-            {category === 'Transport' ? (
-              <View style={styles.row}>
-                <View style={styles.flex1}><Text style={styles.label}>From</Text><View style={styles.chipContainer}>{locations.filter(l => l !== 'Other').map(l => (<TouchableOpacity key={l} onPress={() => setLocationFrom(l)} style={[styles.chip, locationFrom === l && styles.chipSelected]}><Text style={[styles.chipText, locationFrom === l && styles.chipTextSelected]}>{l}</Text></TouchableOpacity>))}</View></View>
-                <View style={styles.flex1}><Text style={styles.label}>To</Text><View style={styles.chipContainer}>{locations.filter(l => l !== 'Other').map(l => (<TouchableOpacity key={l} onPress={() => setLocationTo(l)} style={[styles.chip, locationTo === l && styles.chipSelected]}><Text style={[styles.chipText, locationTo === l && styles.chipTextSelected]}>{l}</Text></TouchableOpacity>))}</View></View>
-              </View>
-            ) : (
-              <>
-                <Text style={styles.label}>Location</Text>
-                <View style={styles.chipContainer}>
-                  {locations.map(l => (
-                    <TouchableOpacity key={l} onPress={() => setLocation(l)} style={[styles.chip, location === l && styles.chipSelected]}>
-                      <Text style={[styles.chipText, location === l && styles.chipTextSelected]}>{l}</Text>
-                    </TouchableOpacity>
-                  ))}
+            <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+              {isLoading ? (
+                <View style={styles.loaderContainer}>
+                  <ActivityIndicator size="large" color="#14b8a6" />
+                  <Text style={styles.loaderText}>Loading members...</Text>
                 </View>
-                {location === 'Other' && (
-                  <TextInput style={[styles.input, styles.otherInput]} placeholder="Specify Location" value={otherLocation} onChangeText={setOtherLocation} placeholderTextColor="#94a3b8" />
-                )}
-              </>
-            )}
-          </View>
-          
-          <View style={styles.row}>
-            <View style={styles.flex1}><Text style={styles.label}>Paid By</Text><View style={styles.chipContainer}>{users.map(u => (<TouchableOpacity key={u.id} onPress={() => setPaidByUserId(u.id)} style={[styles.chip, paidByUserId === u.id && styles.chipSelected]}><Text style={[styles.chipText, paidByUserId === u.id && styles.chipTextSelected]}>{u.name}</Text></TouchableOpacity>))}</View></View>
-            <View style={styles.flex1}>
-              <Text style={styles.label}>Amount (₹)</Text>
-              {/* --- [MODIFICATION] Amount input is now conditional --- */}
-              <TextInput 
-                style={[styles.input, isAmountDisabled && styles.inputDisabled]} 
-                keyboardType="decimal-pad" 
-                placeholder="0.00" 
-                value={isAmountDisabled ? exactSplitTotal.toFixed(2) : amount} 
-                onChangeText={setAmount} 
-                placeholderTextColor="#94a3b8"
-                editable={!isAmountDisabled}
-              />
-            </View>
-          </View>
-          
-          <View style={styles.section}><Text style={styles.label}>Split Method</Text><View style={styles.segmentedControl}><TouchableOpacity onPress={() => setSplitType('equal')} style={[styles.segmentButton, splitType === 'equal' && styles.segmentSelected]}><Text style={styles.segmentText}>Equally</Text></TouchableOpacity><TouchableOpacity onPress={() => setSplitType('exact')} style={[styles.segmentButton, splitType === 'exact' && styles.segmentSelected]}><Text style={styles.segmentText}>By Exact Amounts</Text></TouchableOpacity></View></View>
-          
-          <View style={styles.section}>
-            <Text style={styles.label}>Split With</Text>
-            {splitType === 'equal' && (<View style={styles.chipContainer}>{users.map(u => (<TouchableOpacity key={u.id} onPress={() => toggleEqualSplitUser(u.id)} style={[styles.chip, splitWith.includes(u.id) && styles.chipSelected]}><Text style={[styles.chipText, splitWith.includes(u.id) && styles.chipTextSelected]}>{u.name}</Text></TouchableOpacity>))}
-            </View>)}
-            {splitType === 'exact' && (<View style={styles.exactSplitContainer}>{users.map(u => (<View key={u.id} style={styles.exactSplitRow}><Text style={styles.exactSplitName}>{u.name}</Text><TextInput style={styles.exactSplitInput} value={String(exactSplits[u.id] || '')} onChangeText={text => handleExactSplitChange(u.id, text)} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor="#94a3b8"/></View>))}</View>)}
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity onPress={onClose} style={[styles.button, styles.cancelButton]}><Text style={styles.buttonText}>Cancel</Text></TouchableOpacity>
-            <TouchableOpacity onPress={handleSubmit} disabled={isSaving} style={[styles.button, styles.saveButton]}>{isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save Expense</Text>}</TouchableOpacity>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+              ) : (
+                <>
+                  <View style={styles.section}><Text style={styles.label}>Category</Text><View style={styles.chipContainer}>{Object.keys(categories).map(c => (<TouchableOpacity key={c} onPress={() => setCategory(c)} style={[styles.chip, category === c && styles.chipSelected]}><Text style={[styles.chipText, category === c && styles.chipTextSelected]}>{c}</Text></TouchableOpacity>))}</View></View>
+                  {currentSubCategories.length > 0 && ( <View style={styles.section}><Text style={styles.label}>Sub-Category</Text><View style={styles.chipContainer}>{currentSubCategories.map(sc => (<TouchableOpacity key={sc} onPress={() => setSubCategory(sc)} style={[styles.chip, subCategory === sc && styles.chipSelected]}><Text style={[styles.chipText, subCategory === sc && styles.chipTextSelected]}>{sc}</Text></TouchableOpacity>))}</View></View> )}
+                  {showDescriptionInput && ( <View style={styles.section}><Text style={styles.label}>Description</Text><TextInput style={styles.input} placeholder="so what is it ...." value={description} onChangeText={setDescription} placeholderTextColor="#94a3b8" /></View> )}
+                  <View style={styles.section}>
+                    {category === 'Transport' ? ( <View style={styles.row}><View style={styles.flex1}><Text style={styles.label}>From</Text><View style={styles.chipContainer}>{locations.filter(l => l !== 'Other').map(l => (<TouchableOpacity key={l} onPress={() => setLocationFrom(l)} style={[styles.chip, locationFrom === l && styles.chipSelected]}><Text style={[styles.chipText, locationFrom === l && styles.chipTextSelected]}>{l}</Text></TouchableOpacity>))}</View></View><View style={styles.flex1}><Text style={styles.label}>To</Text><View style={styles.chipContainer}>{locations.filter(l => l !== 'Other').map(l => (<TouchableOpacity key={l} onPress={() => setLocationTo(l)} style={[styles.chip, locationTo === l && styles.chipSelected]}><Text style={[styles.chipText, locationTo === l && styles.chipTextSelected]}>{l}</Text></TouchableOpacity>))}</View></View></View>
+                    ) : ( <>
+                        <Text style={styles.label}>Location</Text>
+                        <View style={styles.chipContainer}>{locations.map(l => ( <TouchableOpacity key={l} onPress={() => setLocation(l)} style={[styles.chip, location === l && styles.chipSelected]}><Text style={[styles.chipText, location === l && styles.chipTextSelected]}>{l}</Text></TouchableOpacity>))}
+                        </View>
+                        {location === 'Other' && ( <TextInput style={[styles.input, styles.otherInput]} placeholder="Specify Location" value={otherLocation} onChangeText={setOtherLocation} placeholderTextColor="#94a3b8" /> )}
+                      </>)}
+                  </View>
+                  <View style={styles.row}>
+                    <View style={styles.flex1}><Text style={styles.label}>Paid By</Text><View style={styles.chipContainer}>{users.map(u => (<TouchableOpacity key={u.id} onPress={() => setPaidByUserId(u.id)} style={[styles.chip, paidByUserId === u.id && styles.chipSelected]}><Text style={[styles.chipText, paidByUserId === u.id && styles.chipTextSelected]}>{u.name}</Text></TouchableOpacity>))}</View></View>
+                    <View style={styles.flex1}>
+                      <Text style={styles.label}>Amount (₹)</Text>
+                      <TextInput style={[styles.input, isAmountDisabled && styles.inputDisabled]} keyboardType="decimal-pad" placeholder="0.00" value={isAmountDisabled ? exactSplitTotal.toFixed(2) : amount} onChangeText={setAmount} placeholderTextColor="#94a3b8" editable={!isAmountDisabled}/>
+                    </View>
+                  </View>
+                  <View style={styles.section}><Text style={styles.label}>Split Method</Text><View style={styles.segmentedControl}><TouchableOpacity onPress={() => setSplitType('equal')} style={[styles.segmentButton, splitType === 'equal' && styles.segmentSelected]}><Text style={styles.segmentText}>Equally</Text></TouchableOpacity><TouchableOpacity onPress={() => setSplitType('exact')} style={[styles.segmentButton, splitType === 'exact' && styles.segmentSelected]}><Text style={styles.segmentText}>By Exact Amounts</Text></TouchableOpacity></View></View>
+                  <View style={styles.section}>
+                    <Text style={styles.label}>Split With</Text>
+                    {splitType === 'equal' && (<View style={styles.chipContainer}>{users.map(u => (<TouchableOpacity key={u.id} onPress={() => toggleEqualSplitUser(u.id)} style={[styles.chip, splitWith.includes(u.id) && styles.chipSelected]}><Text style={[styles.chipText, splitWith.includes(u.id) && styles.chipTextSelected]}>{u.name}</Text></TouchableOpacity>))}
+                    </View>)}
+                    {splitType === 'exact' && (<View style={styles.exactSplitContainer}>{users.map(u => (<View key={u.id} style={styles.exactSplitRow}><Text style={styles.exactSplitName}>{u.name}</Text><TextInput style={styles.exactSplitInput} value={String(exactSplits[u.id] || '')} onChangeText={text => handleExactSplitChange(u.id, text)} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor="#94a3b8"/></View>))}</View>)}
+                  </View>
+                  <View style={styles.buttonContainer}>
+                    <TouchableOpacity onPress={handleClose} style={[styles.button, styles.cancelButton]}><Text style={styles.buttonText}>Cancel</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={handleSubmit} disabled={isSaving} style={[styles.button, styles.saveButton]}>{isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save Expense</Text>}</TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </Animated.View>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#0f172a' },
+    // --- STYLE CHANGE: Simplified overlay and explicit positioning for the container ---
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Moved backdrop color here
+    },
+    backdrop: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    modalContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '95%',
+        backgroundColor: '#0f172a',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        overflow: 'hidden',
+    },
+    safeArea: { flex: 1, backgroundColor: 'transparent' }, // Make safe area transparent
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#334155' },
     headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#f1f5f9' },
     closeButton: { padding: 4 },
     container: { flex: 1 },
     contentContainer: { padding: 16, paddingBottom: 40 },
+    loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 100 },
+    loaderText: { marginTop: 16, color: '#94a3b8', fontSize: 16 },
     section: { marginBottom: 24 },
     label: { fontSize: 16, color: '#94a3b8', marginBottom: 12, fontWeight: '500' },
     input: { backgroundColor: '#334155', color: '#f1f5f9', padding: 14, borderRadius: 8, fontSize: 16 },
