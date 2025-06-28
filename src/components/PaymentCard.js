@@ -1,42 +1,46 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import UserAvatar from './UserAvatar';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const PaymentCard = ({ payment, currentUserId }) => {
   const isSent = payment.paidByUserId === currentUserId;
 
-  const fromUser = isSent ? "You" : payment.paidByUserName;
-  const toUser = isSent ? payment.paidToUserName : "you";
+  const otherPersonName = isSent ? payment.paidToUserName : payment.paidByUserName;
+  const actionText = isSent ? 'You sent a payment' : 'You received a payment';
 
   const date = new Date(payment.date);
   const time = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   return (
     <View style={styles.card}>
-      <View style={styles.leftContainer}>
-        <UserAvatar name={payment.paidByUserName} size="md" />
-        <View style={styles.flowContainer}>
-          <View style={isSent ? styles.sentBar : styles.receivedBar} />
-          <Icon name="arrow-forward-outline" size={20} color={isSent ? styles.sentAmount.color : styles.receivedAmount.color} />
-        </View>
-        <UserAvatar name={payment.paidToUserName} size="md" />
+      {/* Left Icon */}
+      {/* --- [MODIFICATION] Colors are now inversed --- */}
+      <View style={[styles.iconContainer, isSent ? styles.receivedIconBg : styles.sentIconBg]}>
+        <Icon 
+          name={isSent ? 'arrow-up-outline' : 'arrow-down-outline'} 
+          size={26} 
+          color={'#fff'} 
+        />
       </View>
 
+      {/* Center Details */}
       <View style={styles.detailsContainer}>
-        <Text style={styles.descriptionText}>
-          <Text style={{ fontWeight: 'bold' }}>{fromUser}</Text>
-          <Text> paid </Text>
-          <Text style={{ fontWeight: 'bold' }}>{toUser}</Text>
-        </Text>
+        <Text style={styles.nameText}>{otherPersonName}</Text>
+        <Text style={styles.subtitleText}>{actionText}</Text>
+        
         {payment.note && (
-            <Text style={styles.noteText} numberOfLines={1}>Note: "{payment.note}"</Text>
+            <View style={styles.noteContainer}>
+                <Icon name="chatbubble-ellipses-outline" size={14} color={styles.noteText.color} />
+                <Text style={styles.noteText} numberOfLines={2}>{payment.note}</Text>
+            </View>
         )}
       </View>
 
+      {/* Right Amount */}
       <View style={styles.amountContainer}>
-        <Text style={[styles.amountText, isSent ? styles.sentAmount : styles.receivedAmount]}>
-          {isSent ? '-' : '+'}₹{payment.amount.toFixed(2)}
+        {/* --- [MODIFICATION] Colors inversed and +/- signs removed --- */}
+        <Text style={[styles.amountText, isSent ? styles.receivedAmount : styles.sentAmount]}>
+          ₹{payment.amount.toFixed(2)}
         </Text>
         <Text style={styles.timeText}>{time}</Text>
       </View>
@@ -48,63 +52,71 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b', // slate-800
-    borderRadius: 12,
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 10,
+    marginBottom: 12,
+    gap: 16,
   },
-  leftContainer: {
-    flexDirection: 'row',
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  flowContainer: {
-    alignItems: 'center',
-    marginHorizontal: -4,
+  sentIconBg: {
+    backgroundColor: '#ef4444', // Red
   },
-  sentBar: {
-    height: 2,
-    width: 24,
-    backgroundColor: '#f87171', // red-400
-    marginBottom: 2,
-  },
-  receivedBar: {
-    height: 2,
-    width: 24,
-    backgroundColor: '#4ade80', // green-400
-    marginBottom: 2,
+  receivedIconBg: {
+    backgroundColor: '#22c55e', // Green
   },
   detailsContainer: {
     flex: 1,
   },
-  descriptionText: {
-    color: '#f1f5f9', // slate-100
-    fontSize: 15,
+  nameText: {
+    color: '#f1f5f9',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  subtitleText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  noteContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: '#334155',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
   },
   noteText: {
-    color: '#94a3b8', // slate-400
+    color: '#cbd5e1',
     fontSize: 13,
     fontStyle: 'italic',
-    marginTop: 4,
+    flexShrink: 1,
   },
   amountContainer: {
     alignItems: 'flex-end',
-    marginLeft: 10,
   },
   amountText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
   },
   sentAmount: {
-    color: '#f87171', // red-400
+    color: '#f87171', // Red
   },
   receivedAmount: {
-    color: '#4ade80', // green-400
+    color: '#4ade80', // Green
   },
   timeText: {
-    color: '#64748b', // slate-500
+    color: '#64748b',
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 5,
   },
 });
 

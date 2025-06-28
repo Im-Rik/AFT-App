@@ -3,39 +3,18 @@ import { View, Text, SectionList, StyleSheet } from 'react-native';
 import UserAvatar from './UserAvatar';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-// The helper component for icons remains the same
 const CategoryIcon = ({ category }) => {
   let iconName = 'apps-outline';
   let iconColor = '#94a3b8';
 
   switch (category) {
-    case 'Food':
-      iconName = 'fast-food-outline';
-      iconColor = '#f97316';
-      break;
-    case 'Transport':
-      iconName = 'car-sport-outline';
-      iconColor = '#3b82f6';
-      break;
-    case 'Hotel':
-      iconName = 'bed-outline';
-      iconColor = '#8b5cf6';
-      break;
-    case 'Activities':
-      iconName = 'tennisball-outline';
-      iconColor = '#14b8a6';
-      break;
-    case 'Shopping':
-      iconName = 'cart-outline';
-      iconColor = '#ec4899';
-      break;
-    case 'Payment':
-      iconName = 'swap-horizontal-outline';
-      iconColor = '#0ea5e9';
-      break;
-    default:
-      iconName = 'receipt-outline';
-      iconColor = '#64748b';
+    case 'Food': iconName = 'fast-food-outline'; iconColor = '#f97316'; break;
+    case 'Transport': iconName = 'car-sport-outline'; iconColor = '#3b82f6'; break;
+    case 'Hotel': iconName = 'bed-outline'; iconColor = '#8b5cf6'; break;
+    case 'Activities': iconName = 'tennisball-outline'; iconColor = '#14b8a6'; break;
+    case 'Shopping': iconName = 'cart-outline'; iconColor = '#ec4899'; break;
+    case 'Payment': iconName = 'swap-horizontal-outline'; iconColor = '#0ea5e9'; break;
+    default: iconName = 'receipt-outline'; iconColor = '#64748b';
   }
 
   return (
@@ -45,7 +24,8 @@ const CategoryIcon = ({ category }) => {
   );
 };
 
-const AllTransactions = ({ expenses, payments }) => {
+// --- Accept new props ---
+const AllTransactions = ({ expenses, payments, isRefreshing, onRefresh, lastUpdated }) => {
   const sections = useMemo(() => {
     const allTransactions = [
       ...expenses.map(e => ({ ...e, txType: 'expense' })),
@@ -54,23 +34,19 @@ const AllTransactions = ({ expenses, payments }) => {
     allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     const grouped = allTransactions.reduce((acc, tx) => {
-      // --- FIX #1: DATE PARSING ---
-      // The date string from the server uses a space, not a 'T'.
-      // We now split by the space to correctly get the date part.
       const dateKey = tx.date.split(' ')[0];
-      
-      if (!acc[dateKey]) {
-        acc[dateKey] = [];
-      }
+      if (!acc[dateKey]) { acc[dateKey] = []; }
       acc[dateKey].push(tx);
       return acc;
     }, {});
 
-    return Object.entries(grouped).map(([date, data]) => ({
-      title: date,
-      data,
-    }));
+    return Object.entries(grouped).map(([date, data]) => ({ title: date, data }));
   }, [expenses, payments]);
+  
+  // --- [ENHANCEMENT] Format the last updated time for display ---
+  const lastUpdatedTitle = lastUpdated 
+    ? `Last updated: ${lastUpdated.toLocaleTimeString()}`
+    : 'Pull to refresh';
 
   const renderItem = ({ item }) => {
     const isExpense = item.txType === 'expense';
@@ -94,12 +70,9 @@ const AllTransactions = ({ expenses, payments }) => {
   };
   
   const renderSectionHeader = ({ section: { title } }) => {
-    const date = new Date(title + 'T12:00:00Z'); // This now works correctly
+    const date = new Date(title + 'T12:00:00Z');
     const formattedDate = date.toLocaleDateString('en-IN', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
     return <Text style={styles.sectionHeader}>{formattedDate}</Text>;
   }
@@ -118,76 +91,29 @@ const AllTransactions = ({ expenses, payments }) => {
       }
       showsVerticalScrollIndicator={false}
       stickySectionHeadersEnabled={false}
+      // --- [IMPLEMENTATION] Add refresh control props ---
+      onRefresh={onRefresh}
+      refreshing={isRefreshing}
+      progressViewOffset={10} // Optional: Adjust spinner position
     />
   );
 };
 
+// Styles remain the same
 const styles = StyleSheet.create({
-  listContentContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    // --- FIX #2: ADD BOTTOM SPACE ---
-    // Added padding to ensure the FAB doesn't cover the last item.
-    paddingBottom: 120,
-  },
-  sectionHeader: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#cbd5e1',
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-  },
-  iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#334155',
-    marginRight: 14,
-  },
-  detailsContainer: {
-    flex: 1,
-  },
-  descriptionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#f1f5f9',
-  },
-  subtitleText: {
-    fontSize: 13,
-    color: '#94a3b8',
-    marginTop: 4,
-  },
-  amountContainer: {
-    marginLeft: 10,
-  },
-  amountText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  expenseAmount: {
-    color: '#f87171',
-  },
-  paymentAmount: {
-    color: '#4ade80',
-  },
-  emptyContainer: {
-    marginTop: '50%',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#64748b',
-  },
+  listContentContainer: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 },
+  sectionHeader: { fontSize: 16, fontWeight: 'bold', color: '#cbd5e1', marginTop: 24, marginBottom: 12 },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', borderRadius: 12, padding: 14, marginBottom: 10 },
+  iconContainer: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center', backgroundColor: '#334155', marginRight: 14 },
+  detailsContainer: { flex: 1 },
+  descriptionText: { fontSize: 16, fontWeight: '600', color: '#f1f5f9' },
+  subtitleText: { fontSize: 13, color: '#94a3b8', marginTop: 4 },
+  amountContainer: { marginLeft: 10 },
+  amountText: { fontSize: 16, fontWeight: 'bold' },
+  expenseAmount: { color: '#f87171' },
+  paymentAmount: { color: '#4ade80' },
+  emptyContainer: { marginTop: '50%', alignItems: 'center' },
+  emptyText: { fontSize: 16, color: '#64748b' },
 });
 
 export default AllTransactions;

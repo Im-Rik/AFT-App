@@ -15,7 +15,8 @@ import PaymentHistoryScreen from '../screens/tabs/PaymentHistoryScreen';
 
 const Tab = createBottomTabNavigator();
 
-const MainTabNavigator = ({ data, openSettleUpModal, isRefreshing, onRefresh }) => {
+// --- Accept the new 'lastUpdated' prop ---
+const MainTabNavigator = ({  data, openSettleUpModal, isRefreshing, onRefresh, lastUpdated, onOpenSyncStatus, queue }) => {
   const { colors } = useTheme();
   const { user } = useAuth();
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
@@ -25,6 +26,9 @@ const MainTabNavigator = ({ data, openSettleUpModal, isRefreshing, onRefresh }) 
       <LogoutModal
         visible={isLogoutModalVisible}
         onClose={() => setIsLogoutModalVisible(false)}
+        onOpenSyncStatus={onOpenSyncStatus}
+        queue={queue}
+        lastUpdated={lastUpdated}
       />
       <Tab.Navigator
         screenOptions={({ route }) => ({
@@ -79,6 +83,8 @@ const MainTabNavigator = ({ data, openSettleUpModal, isRefreshing, onRefresh }) 
               openSettleUpModal={openSettleUpModal} 
               isRefreshing={isRefreshing}
               onRefresh={onRefresh}
+              // --- Pass down the new prop ---
+              lastUpdated={lastUpdated}
             />
           )}
         </Tab.Screen>
@@ -89,6 +95,8 @@ const MainTabNavigator = ({ data, openSettleUpModal, isRefreshing, onRefresh }) 
               payments={data.payments} 
               isRefreshing={isRefreshing}
               onRefresh={onRefresh}
+              // --- Pass down the new prop ---
+              lastUpdated={lastUpdated}
             />
           )}
         </Tab.Screen>
@@ -98,6 +106,8 @@ const MainTabNavigator = ({ data, openSettleUpModal, isRefreshing, onRefresh }) 
               expenses={data.expenses} 
               isRefreshing={isRefreshing}
               onRefresh={onRefresh}
+              // --- Pass down the new prop ---
+              lastUpdated={lastUpdated}
             />
           )}
         </Tab.Screen>
@@ -107,6 +117,8 @@ const MainTabNavigator = ({ data, openSettleUpModal, isRefreshing, onRefresh }) 
               payments={data.payments} 
               isRefreshing={isRefreshing}
               onRefresh={onRefresh}
+              // --- Pass down the new prop ---
+              lastUpdated={lastUpdated}
             />
           )}
         </Tab.Screen>

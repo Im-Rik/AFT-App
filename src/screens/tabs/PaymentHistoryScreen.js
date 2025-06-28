@@ -2,10 +2,15 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import PaymentHistory from '../../components/PaymentHistory';
 
-const PaymentHistoryScreen = ({ payments }) => {
+const PaymentHistoryScreen = ({ payments, isRefreshing, onRefresh, lastUpdated }) => {
   return (
     <View style={styles.container}>
-      <PaymentHistory payments={payments} />
+      <PaymentHistory 
+        payments={payments} 
+        isRefreshing={isRefreshing}
+        onRefresh={onRefresh}
+        lastUpdated={lastUpdated}
+      />
     </View>
   );
 };

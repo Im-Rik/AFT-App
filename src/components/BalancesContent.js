@@ -7,7 +7,6 @@ const BalancesContent = ({ balances, openSettleUpModal }) => {
   const { youOwe, youAreOwed, groupDebts, groupSettlements } = balances;
   const [view, setView] = useState('simplified');
 
-  // This component for personal balances is unchanged
   const BreakdownItem = ({ person, amount }) => (
     <View style={styles.breakdownItem}>
       <UserAvatar name={person} size="sm" />
@@ -16,49 +15,51 @@ const BalancesContent = ({ balances, openSettleUpModal }) => {
     </View>
   );
 
-  // --- START OF REDESIGNED COMPONENT ---
-  // This is the new, cleaner list item for the Group Overview
   const DebtItem = ({ from, to, amount }) => (
     <View style={styles.debtItem}>
       <View>
         <Text style={styles.debtText}>
-          <Text style={styles.oweName}>{from}</Text>
-          <Text style={styles.owesText}> owes </Text>
+          <Text style={styles.oweName}>{from},</Text>
+          <Text style={styles.owesText}> give </Text>
           <Text style={styles.getName}>{to}</Text>
         </Text>
       </View>
       <Text style={styles.debtAmount}>₹{amount.toFixed(2)}</Text>
     </View>
   );
-  // --- END OF REDESIGNED COMPONENT ---
+
+  // --- The isSettleUpDisabled constant has been removed ---
 
   return (
     <View style={styles.container}>
-      {/* --- You Owe Section (Unchanged) --- */}
+      {/* --- You Owe Section --- */}
       <View style={[styles.card, { borderColor: '#f87171' }]}>
-        <Text style={styles.cardTitle}>You Owe</Text>
+        <Text style={styles.cardTitle}>You Owe (Give)</Text>
         <Text style={[styles.cardTotal, { color: '#f87171' }]}>₹{youOwe.total.toFixed(2)}</Text>
         <View style={styles.breakdownContainer}>
           {youOwe.breakdown.map((item, index) => <BreakdownItem key={index} person={item.to} amount={item.amount} />)}
         </View>
-        {youOwe.total > 0 && (
-          <TouchableOpacity style={styles.settleUpButton} onPress={openSettleUpModal}>
-            <Icon name="cash-outline" size={20} color="#fff" />
-            <Text style={styles.settleUpButtonText}>Settle Up</Text>
-          </TouchableOpacity>
-        )}
+        
+        {/* --- [MODIFICATION] Button is now always active and has static text/icon --- */}
+        <TouchableOpacity 
+          style={styles.settleUpButton} 
+          onPress={openSettleUpModal}
+        >
+          <Icon name="cash-outline" size={20} color="#fff" />
+          <Text style={styles.settleUpButtonText}>Settle Up</Text>
+        </TouchableOpacity>
       </View>
 
       {/* --- You Are Owed Section (Unchanged) --- */}
       <View style={[styles.card, { borderColor: '#4ade80' }]}>
-        <Text style={styles.cardTitle}>You Are Owed</Text>
+        <Text style={styles.cardTitle}>You Are Owed (Take)</Text>
         <Text style={[styles.cardTotal, { color: '#4ade80' }]}>₹{youAreOwed.total.toFixed(2)}</Text>
         <View style={styles.breakdownContainer}>
           {youAreOwed.breakdown.map((item, index) => <BreakdownItem key={index} person={item.fromName} amount={item.amount} />)}
         </View>
       </View>
 
-      {/* --- Group Overview Section (Styling updated) --- */}
+      {/* --- Group Overview Section (Unchanged) --- */}
       <View style={styles.groupCard}>
         <Text style={styles.groupTitle}>Group Overview</Text>
         <View style={styles.segmentedControl}>
@@ -129,6 +130,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     gap: 8,
   },
+  // --- The settleUpButtonDisabled style is no longer needed and has been removed ---
   settleUpButtonText: {
     color: '#fff',
     fontSize: 16,
@@ -165,30 +167,29 @@ const styles = StyleSheet.create({
     color: '#f1f5f9',
     fontWeight: 'bold',
   },
-  // --- START OF NEW AND UPDATED STYLES ---
   debtItemsContainer: {
-    gap: 16, // Use gap for spacing instead of borders
+    gap: 16,
   },
   debtItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between', // Pushes amount to the right
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 14,
-    backgroundColor: '#33415550', // Slightly transparent background
+    backgroundColor: '#33415550',
     borderRadius: 10,
   },
   debtText: {
     fontSize: 15,
   },
   oweName: {
-    color: '#fca5a5', // Lighter red for text
+    color: '#fca5a5',
     fontWeight: '600',
   },
   owesText: {
-    color: '#94a3b8', // Muted color for "owes"
+    color: '#94a3b8',
   },
   getName: {
-    color: '#86efac', // Lighter green for text
+    color: '#86efac',
     fontWeight: '600',
   },
   debtAmount: {
@@ -202,7 +203,45 @@ const styles = StyleSheet.create({
     padding: 20,
     fontSize: 16,
     fontWeight: '500',
-  }
+  },
+  container: {
+    gap: 20,
+  },
+  card: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+  },
+  cardTitle: {
+    color: '#cbd5e1',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  cardTotal: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  breakdownContainer: {
+    gap: 15,
+  },
+  breakdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  breakdownPerson: {
+    color: '#f1f5f9',
+    fontSize: 16,
+    marginLeft: 12,
+  },
+  breakdownAmount: {
+    color: '#f1f5f9',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 'auto',
+  },
   // --- END OF NEW AND UPDATED STYLES ---
 });
 

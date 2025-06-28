@@ -1,60 +1,13 @@
-// src/api/index.js
-
+import { fetchWithAuth } from './apiClient'; // <-- Import from the new file
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = 'https://aft-server.onrender.com';
 
-/**
- * A utility function to handle API requests with authentication.
- * It now accepts an optional token override to avoid race conditions on login.
- * @param {string} endpoint - The API endpoint to call.
- * @param {object} options - Optional fetch options.
- * @param {string|null} tokenOverride - A token to use directly instead of reading from storage.
- * @returns {Promise<any>} - The JSON response from the API.
- */
-async function fetchWithAuth(endpoint, options = {}, tokenOverride = null) {
-  // Use the token override if it exists, otherwise get it from storage.
-  const token = tokenOverride || await AsyncStorage.getItem('authToken');
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-
-  if (response.status === 401 || response.status === 403) {
-    await AsyncStorage.removeItem('authToken');
-    throw new Error('Unauthorized or Forbidden');
-  }
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'An API error occurred.');
-  }
-
-  // === THIS BLOCK IS NOW MORE ROBUST ===
-  // If the status is 204 No Content, we can safely return null.
-  if (response.status === 204) {
-    return null;
-  }
-
-  // For any other successful response, try to parse the JSON body.
-  // An empty body will throw an error, which we can catch.
-  try {
-    return await response.json();
-  } catch (error) {
-    console.warn("Could not parse JSON response, returning null.", error);
-    return null;
-  }
-  // === END OF UPDATE ===
-}
+// --- [REMOVED] The entire fetchWithAuth function has been moved to apiClient.js ---
 
 // --- AUTHENTICATION ---
+// This function doesn't use fetchWithAuth, so it remains unchanged, but we add the token override
+// parameter to the getProfile call to keep the manualLogin function working as before.
 export const manualLogin = (credentials) =>
   fetch(`${API_BASE_URL}/auth/manual-login`, {
     method: 'POST',
@@ -69,7 +22,17 @@ export const manualLogin = (credentials) =>
   });
 
 // --- CORE API FUNCTIONS ---
-export const getProfile = (token = null) => fetchWithAuth('/api/profile', {}, token);
+// The getProfile function now needs to handle the token override case for login.
+export const getProfile = (token = null) => {
+    if (token) {
+        // This is a special case for the initial login call where we don't want to use fetchWithAuth
+        return fetch(`${API_BASE_URL}/api/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json());
+    }
+    return fetchWithAuth('/api/profile');
+};
+
 export const getUsers = () => fetchWithAuth('/api/users');
 export const addPayment = (paymentData) => fetchWithAuth('/api/payments', { method: 'POST', body: JSON.stringify(paymentData) });
 export const addExpense = (expenseData) => fetchWithAuth('/api/expenses', { method: 'POST', body: JSON.stringify(expenseData) });

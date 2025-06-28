@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { addPayment } from '../api';
 import UserAvatar from './UserAvatar'; // We need this
+import { addToQueue } from '../api/offlineQueue';
 
 // Note: For a picker/select dropdown, a library like '@react-native-picker/picker'
 // is often used. For simplicity, we'll build a custom one later if needed.
@@ -44,17 +45,32 @@ const SettleUpModal = ({ visible, onClose, users, onSave }) => {
     }
 
     setIsSaving(true);
-    try {
-      await addPayment({
+    const payload = {
         fromUserId: user.userId,
         toUserId: toUserId,
         amount: parseFloat(amount),
         note: note,
-      });
-      onSave(); // Re-fetches all dashboard data
-      onClose(); // Close the modal
+    };
+
+    try {
+      await addPayment(payload);
+      Alert.alert('Success', 'Payment recorded successfully!');
+      onSave();
+      onClose();
     } catch (error) {
-      Alert.alert('Error', `Failed to save payment: ${error.message}`);
+      // --- [MODIFICATION] Offline queue logic ---
+      const isLikelyOffline = error.message.includes('Network request failed');
+      if (isLikelyOffline) {
+          await addToQueue('/api/payments', payload);
+          Alert.alert(
+            'Saved Locally', 
+            'Your payment has been saved locally and will be uploaded when you are back online.'
+          );
+          onSave();
+          onClose();
+      } else {
+          Alert.alert('Error', `Failed to save payment: ${error.message}`);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -72,14 +88,14 @@ const SettleUpModal = ({ visible, onClose, users, onSave }) => {
           <Text style={styles.headerTitle}>Record a Payment</Text>
 
           {/* From User */}
-          <Text style={styles.label}>You Paid</Text>
+          {/* <Text style={styles.label}>You Paid</Text>
           <View style={styles.userDisplay}>
             <UserAvatar name={user?.name} size="md" />
             <Text style={styles.userNameText}>{user?.name}</Text>
-          </View>
+          </View> */}
           
           {/* To User (simplified as buttons for mobile UI) */}
-          <Text style={styles.label}>To</Text>
+          <Text style={styles.label}>Pay To:</Text>
           <View style={styles.userSelectionContainer}>
             {otherUsers.map(u => (
                 <TouchableOpacity 
@@ -103,7 +119,7 @@ const SettleUpModal = ({ visible, onClose, users, onSave }) => {
           />
           <TextInput
             style={styles.input}
-            placeholder="Note (e.g., 'GPay for dinner')"
+            placeholder="Note (e.g., 'for dinner')"
             placeholderTextColor="#94a3b8"
             value={note}
             onChangeText={setNote}

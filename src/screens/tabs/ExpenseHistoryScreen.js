@@ -2,10 +2,15 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import ExpenseHistory from '../../components/ExpenseHistory';
 
-const ExpenseHistoryScreen = ({ expenses }) => {
+const ExpenseHistoryScreen = ({ expenses, isRefreshing, onRefresh, lastUpdated }) => {
   return (
     <View style={styles.container}>
-      <ExpenseHistory expenses={expenses} />
+      <ExpenseHistory 
+        expenses={expenses} 
+        isRefreshing={isRefreshing}
+        onRefresh={onRefresh}
+        lastUpdated={lastUpdated}
+      />
     </View>
   );
 };

@@ -3,10 +3,9 @@ import { SectionList, View, Text, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import PaymentCard from './PaymentCard';
 
-const PaymentHistory = ({ payments }) => {
+const PaymentHistory = ({ payments, isRefreshing, onRefresh, lastUpdated }) => {
   const { user } = useAuth();
   
-  // Group payments by date, similar to the All Transactions tab
   const sections = useMemo(() => {
     const myPayments = payments
       .filter(p => p.paidByUserId === user.userId || p.paidToUserId === user.userId)
@@ -14,26 +13,18 @@ const PaymentHistory = ({ payments }) => {
 
     const grouped = myPayments.reduce((acc, tx) => {
       const dateKey = tx.date.split(' ')[0];
-      if (!acc[dateKey]) {
-        acc[dateKey] = [];
-      }
+      if (!acc[dateKey]) { acc[dateKey] = []; }
       acc[dateKey].push(tx);
       return acc;
     }, {});
 
-    return Object.entries(grouped).map(([date, data]) => ({
-      title: date,
-      data,
-    }));
+    return Object.entries(grouped).map(([date, data]) => ({ title: date, data }));
   }, [payments, user.userId]);
 
   const renderSectionHeader = ({ section: { title } }) => {
     const date = new Date(title + 'T12:00:00Z');
     const formattedDate = date.toLocaleDateString('en-IN', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
     return <Text style={styles.sectionHeader}>{formattedDate}</Text>;
   };
@@ -52,6 +43,9 @@ const PaymentHistory = ({ payments }) => {
       }
       showsVerticalScrollIndicator={false}
       stickySectionHeadersEnabled={false}
+      // --- [IMPLEMENTATION] Add refresh control props ---
+      onRefresh={onRefresh}
+      refreshing={isRefreshing}
     />
   );
 };
@@ -60,7 +54,7 @@ const styles = StyleSheet.create({
   listContentContainer: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 120, // Space for the FAB
+    paddingBottom: 120,
   },
   sectionHeader: {
     fontSize: 16,
