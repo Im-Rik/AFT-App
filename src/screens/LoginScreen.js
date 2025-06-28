@@ -1,6 +1,6 @@
 // src/screens/LoginScreen.js
 
-import React, {useState} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,25 +22,27 @@ const LoginScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login, authError } = useAuth();
 
+  // If a global auth error occurs (e.g., token invalid), show it.
+  useEffect(() => {
+    if (authError) {
+        setError(authError);
+    }
+  }, [authError]);
+
   const handleSubmit = async () => {
     setError('');
     setIsLoading(true);
     try {
-      // Use the lowercase values for the API call
       const response = await manualLogin({ username: username.toLowerCase(), password });
       if (response.token) {
+        // The login function now handles fetching the profile and saving everything.
         await login(response.token);
       } else {
         setError('Login failed: No token received from server.');
       }
     } catch (err) {
-      // If there's an authError from the context, prefer it.
-      // This handles cases where the token is valid but profile fetch fails.
-      if (authError) {
-        setError(authError);
-      } else {
-        setError(err.message || 'Failed to log in. Please check your credentials.');
-      }
+      // The login function will throw an error on failure, which we catch here.
+      setError(err.message || 'Failed to log in. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -61,9 +63,7 @@ const LoginScreen = () => {
             placeholder="Username"
             placeholderTextColor="#94a3b8"
             value={username}
-            // --- FIX: Enforce lowercase on text change ---
             onChangeText={text => setUsername(text.toLowerCase())}
-            // This ensures no capitalization happens
             autoCapitalize="none"
             keyboardType="email-address"
             returnKeyType="next"
@@ -73,17 +73,13 @@ const LoginScreen = () => {
             placeholder="Password"
             placeholderTextColor="#94a3b8"
             value={password}
-            // Password can be case-sensitive, so we don't force lowercase here
             onChangeText={setPassword}
             secureTextEntry
-            // Add autoCapitalize here for consistency
             autoCapitalize="none"
             returnKeyType="done"
           />
           
-          {error && <Text style={styles.errorText}>{error}</Text>}
-          {/* We can keep this for future use, but the local error will now show auth errors */}
-          {/* {authError && <Text style={styles.errorText}>{authError}</Text>} */}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <TouchableOpacity
             style={styles.button}
