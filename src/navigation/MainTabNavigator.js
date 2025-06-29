@@ -15,8 +15,8 @@ import PaymentHistoryScreen from '../screens/tabs/PaymentHistoryScreen';
 
 const Tab = createBottomTabNavigator();
 
-// --- Accept the new 'lastUpdated' prop ---
-const MainTabNavigator = ({  data, openSettleUpModal, isRefreshing, onRefresh, lastUpdated, onOpenSyncStatus, queue }) => {
+// --- Accept the new `safeAreaBottom` prop ---
+const MainTabNavigator = ({  data, openSettleUpModal, isRefreshing, onRefresh, lastUpdated, onOpenSyncStatus, queue, safeAreaBottom }) => {
   const { colors } = useTheme();
   const { user } = useAuth();
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
@@ -67,8 +67,9 @@ const MainTabNavigator = ({  data, openSettleUpModal, isRefreshing, onRefresh, l
           tabBarStyle: {
             backgroundColor: colors.card, // slate-800
             borderTopColor: colors.border, // slate-700
-            height: 60,
-            paddingBottom: 5,
+            // --- Dynamically adjust height and padding ---
+            height: 60 + safeAreaBottom,
+            paddingBottom: 5 + safeAreaBottom,
           },
           tabBarLabelStyle: {
               fontSize: 11,
@@ -83,7 +84,6 @@ const MainTabNavigator = ({  data, openSettleUpModal, isRefreshing, onRefresh, l
               openSettleUpModal={openSettleUpModal} 
               isRefreshing={isRefreshing}
               onRefresh={onRefresh}
-              // --- Pass down the new prop ---
               lastUpdated={lastUpdated}
             />
           )}
@@ -95,7 +95,6 @@ const MainTabNavigator = ({  data, openSettleUpModal, isRefreshing, onRefresh, l
               payments={data.payments} 
               isRefreshing={isRefreshing}
               onRefresh={onRefresh}
-              // --- Pass down the new prop ---
               lastUpdated={lastUpdated}
             />
           )}
@@ -117,7 +116,6 @@ const MainTabNavigator = ({  data, openSettleUpModal, isRefreshing, onRefresh, l
               payments={data.payments} 
               isRefreshing={isRefreshing}
               onRefresh={onRefresh}
-              // --- Pass down the new prop ---
               lastUpdated={lastUpdated}
             />
           )}

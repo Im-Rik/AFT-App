@@ -6,6 +6,7 @@ import { getDashboardData, getUsers } from '../api';
 import { getQueue, processQueue, getSyncHistory } from '../api/offlineQueue';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNetInfo } from '@react-native-community/netinfo';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // --- 1. IMPORT THE HOOK ---
 
 import AddExpenseModal from '../components/AddExpenseModal';
 import SettleUpModal from '../components/SettleUpModal';
@@ -32,6 +33,7 @@ const DashboardScreen = () => {
 
   const { user } = useAuth();
   const netInfo = useNetInfo();
+  const insets = useSafeAreaInsets(); // --- 2. GET THE INSETS ---
   const isOffline = netInfo.isInternetReachable === false;
 
   const refreshQueueAndHistoryState = async () => {
@@ -137,6 +139,8 @@ const DashboardScreen = () => {
             refreshQueueAndHistoryState();
             setIsSyncModalOpen(true);
           }}
+          // --- 3. PASS THE BOTTOM INSET AS A PROP ---
+          safeAreaBottom={insets.bottom}
         />
       )}
 
@@ -152,7 +156,7 @@ const DashboardScreen = () => {
       <View style={[
         styles.fabContainer,
         // Lift the button when the offline notice is visible
-        { bottom: isOffline ? 80 + BANNER_HEIGHT : 80 }
+        { bottom: (isOffline ? 80 + BANNER_HEIGHT : 80) + insets.bottom }
       ]}>
         {user?.role === 'admin' && (
           <TouchableOpacity

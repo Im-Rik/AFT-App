@@ -3,9 +3,11 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { View, ActivityIndicator, StatusBar } from 'react-native';
+// --- CORRECTLY IMPORT SafeAreaProvider HERE ---
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import LoginScreen from './src/screens/LoginScreen';
-import DashboardScreen from './src/screens/DashboardScreen'; // We will create this next
+import DashboardScreen from './src/screens/DashboardScreen';
 
 // A custom dark theme for the navigation
 const AppTheme = {
@@ -51,13 +53,16 @@ const AppNavigator = () => {
 
 const App = () => {
   return (
-    <AuthProvider>
-      <NavigationContainer theme={AppTheme}>
-        {/* Use 'light-content' for dark backgrounds */}
-        <StatusBar barStyle="light-content" />
-        <AppNavigator />
-      </NavigationContainer>
-    </AuthProvider>
+    // --- WRAP everything in SafeAreaProvider ---
+    <SafeAreaProvider>
+      <AuthProvider>
+        <NavigationContainer theme={AppTheme}>
+          {/* Use 'light-content' for dark backgrounds */}
+          <StatusBar barStyle="light-content" />
+          <AppNavigator />
+        </NavigationContainer>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 };
 
