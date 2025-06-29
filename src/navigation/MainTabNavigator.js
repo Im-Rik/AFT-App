@@ -60,8 +60,9 @@ const MainTabNavigator = ({  data, openSettleUpModal, isRefreshing, onRefresh, l
             } else if (route.name === 'Payments') {
               iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline';
             }
-            return <Icon name={iconName} size={size} color={color} />;
+            return <Icon name={iconName} size={30} color={color} />;
           },
+          tabBarShowLabel: false,
           tabBarActiveTintColor: colors.primary, // green-400
           tabBarInactiveTintColor: '#94a3b8', // slate-400
           tabBarStyle: {
@@ -69,6 +70,7 @@ const MainTabNavigator = ({  data, openSettleUpModal, isRefreshing, onRefresh, l
             borderTopColor: colors.border, // slate-700
             // --- Dynamically adjust height and padding ---
             height: 60 + safeAreaBottom,
+            paddingTop: 8,
             paddingBottom: 5 + safeAreaBottom,
           },
           tabBarLabelStyle: {
